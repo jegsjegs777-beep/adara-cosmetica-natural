@@ -12,8 +12,8 @@
 // ==========================================================================
 
 const CONFIG = {
-  SUPABASE_URL: "", // TODO: pega aquí tu Project URL de Supabase
-  SUPABASE_ANON_KEY: "", // TODO: pega aquí tu anon public key de Supabase
+  SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // TODO: pega aquí tu Project URL de Supabase
+  SUPABASE_ANON_KEY: "sb_publishable_QW0Oq9uAK-UVaTJhUWRk5A_yW3-r31e", // TODO: pega aquí tu anon public key de Supabase
 };
 
 const isLiveMode = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
