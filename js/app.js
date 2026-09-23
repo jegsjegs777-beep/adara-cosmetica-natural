@@ -7,8 +7,8 @@ const CONFIG = {
   ADMIN_WHATSAPP_NUMBER: "50300000000", // TODO: número donde TÚ recibes avisos de nuevas cuentas mayoristas
   STORE_ADDRESS: "4ta calle oriente, casa #2-7, Lourdes Colón, La Libertad. Referencia: a la par / dentro de Médico Lourdes.",
   SHIPPING_INFO: "Consulta la tarifa de tu zona con tu gestor de ventas", // TODO: reemplazar por tabla real de zonas
-  SUPABASE_URL: "", // TODO: pega aquí tu Project URL de Supabase (igual que en admin/js/admin.js)
-  SUPABASE_ANON_KEY: "", // TODO: pega aquí tu anon public key de Supabase
+  SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // TODO: pega aquí tu Project URL de Supabase (igual que en admin/js/admin.js)
+  SUPABASE_ANON_KEY: "sb_publishable_QW0Oq9uAK-UVaTJhUWRk5A_yW3-r31e", // TODO: pega aquí tu anon public key de Supabase
 };
 
 const isLiveMode = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
