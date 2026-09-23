@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ADARA · Panel Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="icon" type="image/png" href="../icons/favicon.png" />
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="login-card">
+    <img src="../icons/logo-badge.png" alt="ADARA Cosmética Natural" style="width:84px;height:84px;border-radius:12px;display:block;margin:0 auto 10px;box-shadow:0 2px 10px rgba(0,0,0,0.12);" />
+    <p class="badge">Panel administrativo</p>
+    <p class="sub" style="margin-top:14px;">Inicia sesión para gestionar el catálogo</p>
+
+    <div class="field" style="margin-top:18px;">
+      <label>Correo</label>
+      <input type="text" id="login-email" placeholder="admin@adara.com" />
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="••••••••" />
+    </div>
+    <div id="login-error" class="hidden" style="font-size:11.5px;color:#b3452c;margin-bottom:10px;"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-login">Iniciar sesión</button>
+
+    <div id="login-config-notice" class="config-banner hidden" style="margin-top:16px;margin-bottom:0;">
+      Conecta Supabase para habilitar el acceso real. Mientras tanto, puedes explorar el panel en modo demostración.
+    </div>
+    <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:10px;" id="btn-demo-mode">Entrar en modo demostración</button>
+  </div>
+</div>
+
+<!-- ================= ADMIN APP ================= -->
+<div id="admin-app">
+  <aside class="sidebar">
+    <p class="brand">ADARA</p>
+    <p class="sub">Panel administrativo</p>
+    <nav>
+      <button class="nav-link active" data-page="productos">Productos</button>
+      <button class="nav-link" data-page="ventas">Ventas</button>
+      <button class="nav-link" data-page="mayoristas">Solicitudes mayoristas</button>
+      <button class="nav-link" data-page="config">Configuración</button>
+    </nav>
+    <div class="logout">
+      <button id="btn-logout">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div id="demo-banner" class="config-banner hidden">
+      Estás en modo demostración. Los cambios no se guardan en una base de datos real hasta que conectes tu proyecto de Supabase en la pestaña Configuración.
+    </div>
+
+    <!-- ---------- PÁGINA: PRODUCTOS ---------- -->
+    <section id="page-productos" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Productos</h1>
+          <p>Agrega, edita o desactiva productos. Los cambios se reflejan al instante en el catálogo del sitio.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-new-product">+ Nuevo producto</button>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <input type="text" id="product-search" placeholder="Buscar producto..." />
+          <select id="category-filter"><option value="">Todas las categorías</option></select>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th>Variantes</th>
+              <th>Disponible</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="products-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- PÁGINA: VENTAS ---------- -->
+    <section id="page-ventas" class="page hidden">
+      <div class="page-header">
+        <div>
+          <h1>Ventas</h1>
+          <p>Registro simple de lo que has vendido — sin depender de un conteo exacto de inventario.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-new-sale">+ Registrar venta</button>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <div class="toolbar">
+          <span style="font-size:12px;color:var(--muted);">Reporte:</span>
+          <input type="date" id="report-from" />
+          <span style="font-size:12px;color:var(--muted);">a</span>
+          <input type="date" id="report-to" />
+          <button class="btn btn-secondary btn-sm" id="btn-report-this-month">Mes actual</button>
+          <button class="btn btn-primary btn-sm" id="btn-download-pdf" style="margin-left:auto;">Descargar PDF</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;margin-bottom:18px;">
+        <div class="card" style="flex:1;padding:16px 18px;">
+          <div style="font-size:11px;color:var(--muted);">Unidades vendidas este mes</div>
+          <div style="font-family:var(--font-display);font-size:26px;color:var(--ink);margin-top:2px;" id="sales-month-units">0</div>
+        </div>
+        <div class="card" style="flex:1;padding:16px 18px;">
+          <div style="font-size:11px;color:var(--muted);">Total del mes</div>
+          <div style="font-family:var(--font-display);font-size:26px;color:var(--sage-dark);margin-top:2px;" id="sales-month-total">$0.00</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Producto</th>
+              <th>Variante</th>
+              <th>Cantidad</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="sales-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- PÁGINA: MAYORISTAS ---------- -->
+    <section id="page-mayoristas" class="page hidden">
+      <div class="page-header">
+        <div>
+          <h1>Solicitudes mayoristas</h1>
+          <p>Aprueba o rechaza las cuentas que solicitan precios al por mayor.</p>
+        </div>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Negocio / Cliente</th>
+              <th>Teléfono</th>
+              <th>Correo</th>
+              <th>Solicitado</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="wholesale-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- PÁGINA: CONFIGURACIÓN ---------- -->
+    <section id="page-config" class="page hidden">
+      <div class="page-header">
+        <div>
+          <h1>Configuración</h1>
+          <p>Conecta este panel a tu proyecto real de Supabase.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="modal-body">
+          <div class="field">
+            <label>Supabase URL</label>
+            <input type="text" id="config-supabase-url" placeholder="https://xxxxx.supabase.co" />
+          </div>
+          <div class="field">
+            <label>Supabase anon public key</label>
+            <input type="text" id="config-supabase-key" placeholder="eyJhbGciOiJI..." />
+          </div>
+          <p style="font-size:11.5px;color:var(--muted);line-height:1.5;">
+            Encuentras estos datos en tu proyecto de Supabase → Settings → API.
+            Una vez guardados aquí, reemplázalos también en <code>admin/js/admin.js</code> y
+            en <code>js/app.js</code> del sitio de clientes para que ambos lean la misma base de datos.
+          </p>
+          <button class="btn btn-primary" id="btn-save-config">Guardar (solo en esta sesión)</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= MODAL: PRODUCTO ================= -->
+<div class="modal-overlay hidden" id="modal-product">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-product-title">Nuevo producto</h2>
+      <button class="icon-only-btn" data-close-modal="modal-product">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Nombre del producto</label>
+        <input type="text" id="pf-name" placeholder="Ej. Romero y Cebolla" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Categoría</label>
+          <select id="pf-category"></select>
+        </div>
+        <div class="field">
+          <label>Etiqueta (opcional)</label>
+          <input type="text" id="pf-tag" placeholder="kit ahorro, duo..." />
+        </div>
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <textarea id="pf-description" placeholder="Descripción breve del producto"></textarea>
+      </div>
+      <div class="field">
+        <label>Foto del producto</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div id="pf-photo-preview" style="width:64px;height:64px;border-radius:10px;background:#e8e3d6;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--border);">
+            <span style="font-size:10px;color:var(--muted);">Sin foto</span>
+          </div>
+          <div style="flex:1;">
+            <input type="file" id="pf-photo-input" accept="image/*" />
+            <p style="font-size:10.5px;color:var(--muted);margin:6px 0 0;">Una foto principal por producto. Se usará como color de referencia si no subes ninguna.</p>
+          </div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Color de referencia</label>
+          <input type="color" id="pf-color" value="#e8e3d6" style="height:38px;padding:4px;" />
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select id="pf-active">
+            <option value="true">Activo (visible en el sitio)</option>
+            <option value="false">Inactivo (oculto)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Variantes / presentaciones</span>
+          <button class="btn btn-secondary btn-sm" id="btn-add-variant" type="button">+ Agregar variante</button>
+        </label>
+        <div id="variants-editor-list"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="modal-product">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-product">Guardar producto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: REGISTRAR VENTA ================= -->
+<div class="modal-overlay hidden" id="modal-sale">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>Registrar venta</h2>
+      <button class="icon-only-btn" data-close-modal="modal-sale">✕</button>
+    </div>
+    <div class="modal-body" id="sale-modal-step-select">
+      <div class="field">
+        <label>Producto y presentación</label>
+        <select id="sf-variant"></select>
+      </div>
+      <div class="field">
+        <label>Cantidad</label>
+        <input type="number" id="sf-quantity" value="1" min="1" />
+      </div>
+    </div>
+    <div class="modal-body hidden" id="sale-modal-step-confirm">
+      <p style="font-size:13.5px;color:var(--ink);line-height:1.5;" id="sale-confirm-text"></p>
+      <p style="font-size:11.5px;color:var(--muted);">Esto solo registra la venta para tu control mensual — no afecta la disponibilidad del producto.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="modal-sale">Cancelar</button>
+      <button class="btn btn-primary" id="btn-sale-continue">Continuar</button>
+      <button class="btn btn-primary hidden" id="btn-sale-confirm">Confirmar venta</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/data.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

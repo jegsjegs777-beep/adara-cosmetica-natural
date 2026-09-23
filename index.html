@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ADARA Cosmética Natural</title>
+<meta name="description" content="Catálogo de cosmética natural artesanal. Pedidos por WhatsApp, envíos a todo El Salvador." />
+<meta name="theme-color" content="#5c7a5c" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" href="icons/favicon.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ================= HEADER ================= -->
+  <header class="app-header">
+    <div class="header-top-row">
+      <div>
+        <p class="brand">ADARA</p>
+        <p class="tagline">COSMÉTICA NATURAL</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="icon-btn" id="btn-header-cart" aria-label="Ver pedido"></button>
+        <button class="icon-btn" id="btn-account" aria-label="Cuenta mayorista"></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= SEARCH + CATEGORIES ================= -->
+  <div class="search-wrap">
+    <div class="search-box">
+      <span id="search-icon" style="color:#8A8577;"></span>
+      <input type="text" id="search-input" placeholder="Buscar shampoo, jabón..." />
+    </div>
+  </div>
+  <nav class="categories" id="categories"></nav>
+
+  <!-- ================= PRODUCT GRID ================= -->
+  <main class="product-grid" id="product-grid"></main>
+
+  <!-- ================= CART BAR (aparece cuando el pedido tiene productos) ================= -->
+  <button class="cart-bar hidden" id="cart-bar">
+    <span class="left"><span id="cart-bar-icon"></span><span id="cart-bar-count">0 productos</span></span>
+    <span class="right"><span id="cart-bar-total">$0.00</span><span class="arrow">Ver pedido &gt;</span></span>
+  </button>
+
+  <!-- ================= BOTTOM NAV ================= -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-nav="home"><span class="ic" id="nav-ic-home"></span><span>Inicio</span></button>
+    <button class="nav-item" data-nav="categories"><span class="ic" id="nav-ic-categories"></span><span>Categorías</span></button>
+    <button class="nav-item" data-nav="cart">
+      <span style="position:relative;">
+        <span class="ic" id="nav-ic-cart"></span>
+        <span class="badge hidden" id="nav-badge">0</span>
+      </span>
+      <span>Pedido</span>
+    </button>
+    <button class="nav-item" data-nav="nosotros"><span class="ic" id="nav-ic-nosotros"></span><span>Nosotros</span></button>
+    <button class="nav-item" data-nav="account"><span class="ic" id="nav-ic-account"></span><span>Cuenta</span></button>
+  </nav>
+
+  <!-- ================= SHEET: PRODUCT DETAIL ================= -->
+  <div class="sheet-overlay hidden" id="sheet-product">
+    <div class="sheet">
+      <div class="sheet-header">
+        <span class="title">Detalle del producto</span>
+        <button class="close-x" data-close="sheet-product" aria-label="Cerrar"></button>
+      </div>
+      <div class="sheet-body" id="product-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- ================= SHEET: CART / CHECKOUT ================= -->
+  <div class="sheet-overlay hidden" id="sheet-cart">
+    <div class="sheet">
+      <div class="sheet-header">
+        <span class="title">Tu pedido</span>
+        <span class="type-badge" id="cart-type-badge">Cliente al detalle</span>
+        <button class="close-x" data-close="sheet-cart" aria-label="Cerrar"></button>
+      </div>
+      <div class="sheet-body" id="cart-body"></div>
+    </div>
+  </div>
+
+  <!-- ================= SHEET: WHOLESALE AUTH ================= -->
+  <div class="sheet-overlay hidden" id="sheet-auth">
+    <div class="sheet">
+      <div class="sheet-header">
+        <span class="title">Acceso mayorista</span>
+        <button class="close-x" data-close="sheet-auth" aria-label="Cerrar"></button>
+      </div>
+      <div class="sheet-body">
+        <div class="auth-hero">
+          <div class="circle" id="auth-hero-icon"></div>
+          <div class="htitle" id="auth-hero-title">Precios especiales al por mayor</div>
+          <div class="hsub" id="auth-hero-sub">Inicia sesión o crea tu cuenta para ver precios mayoristas y hacer pedidos al por mayor.</div>
+        </div>
+
+        <div class="auth-tabs" id="auth-tabs">
+          <button class="auth-tab active" id="tab-login">Iniciar sesión</button>
+          <button class="auth-tab" id="tab-register">Crear cuenta</button>
+        </div>
+
+        <div id="auth-login-form">
+          <div class="form-block">
+            <label class="field-label">Correo</label>
+            <input class="field-input" id="login-email" type="text" placeholder="tucorreo@ejemplo.com" />
+            <label class="field-label">Contraseña</label>
+            <input class="field-input" id="login-password" type="password" placeholder="••••••••" />
+          </div>
+          <div id="login-error" class="auth-error hidden"></div>
+          <button class="primary-btn" id="btn-login">Iniciar sesión</button>
+          <div style="text-align:right;margin-top:8px;">
+            <button class="link-btn" id="btn-goto-forgot">¿Olvidaste tu contraseña?</button>
+          </div>
+          <div class="divider"><div class="line"></div><span>o</span><div class="line"></div></div>
+          <button class="secondary-btn" data-close="sheet-auth">Continuar como cliente al detalle</button>
+        </div>
+
+        <div id="auth-register-form" class="hidden">
+          <div class="form-block">
+            <label class="field-label">Nombre completo o negocio</label>
+            <input class="field-input" id="register-name" type="text" placeholder="Nombre" />
+            <label class="field-label">Teléfono</label>
+            <input class="field-input" id="register-phone" type="text" placeholder="Teléfono" />
+            <label class="field-label">Correo electrónico</label>
+            <input class="field-input" id="register-email" type="text" placeholder="correo@ejemplo.com" />
+            <label class="field-label">Contraseña</label>
+            <input class="field-input" id="register-password" type="password" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div id="register-error" class="auth-error hidden"></div>
+          <div class="notice"><span id="notice-icon" style="margin-top:1px;"></span><span>Tu cuenta y el catálogo quedan disponibles de inmediato. El precio mayorista se activa en cuanto el administrador apruebe tu cuenta.</span></div>
+          <button class="primary-btn" id="btn-register">Crear cuenta y ver precios mayoristas</button>
+        </div>
+
+        <div id="auth-forgot-form" class="hidden">
+          <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px;">Escribe el correo con el que te registraste. Te enviaremos un enlace para crear una nueva contraseña.</p>
+          <div class="form-block">
+            <label class="field-label">Correo</label>
+            <input class="field-input" id="forgot-email" type="text" placeholder="tucorreo@ejemplo.com" />
+          </div>
+          <div id="forgot-message" class="auth-error hidden"></div>
+          <button class="primary-btn" id="btn-send-reset">Enviar enlace de recuperación</button>
+          <button class="secondary-btn" id="btn-back-to-login">Volver a iniciar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SHEET: NOSOTROS ================= -->
+  <div class="sheet-overlay hidden" id="sheet-nosotros">
+    <div class="sheet">
+      <div class="sheet-header">
+        <span class="title">Nosotros</span>
+        <button class="close-x" data-close="sheet-nosotros" aria-label="Cerrar"></button>
+      </div>
+      <div class="sheet-body">
+        <div class="about-hero">
+          <img src="icons/logo-badge.png" alt="ADARA Cosmética Natural" class="about-logo" />
+        </div>
+        <p class="about-text">Creemos que el cuidado personal puede estar en armonía con la naturaleza. Creamos productos de cosmética natural y artesanal para el cuidado de tu cabello y piel, elaborados con ingredientes seleccionados para brindarte bienestar, belleza y resultados que puedas disfrutar día a día.</p>
+        <p class="about-text">Nuestra misión es ayudarte a descubrir una forma más natural de cuidar de ti, resaltando tu belleza y conectándote con el poder de la naturaleza.</p>
+        <p class="about-motto">"De la naturaleza, tu belleza."</p>
+
+        <div class="about-block">
+          <div class="about-block-title" id="about-shipping-title"></div>
+          <p class="about-text" style="margin-top:6px;">Hacemos envíos a todo El Salvador.</p>
+        </div>
+
+        <div class="about-block">
+          <div class="about-block-title" id="about-store-title"></div>
+          <p class="about-text" style="margin-top:6px;" id="about-store-address"></p>
+        </div>
+
+        <div class="about-block">
+          <div class="about-block-title" id="about-contact-title"></div>
+          <p class="about-text" style="margin-top:6px;">Escríbenos por WhatsApp para pedidos y consultas.</p>
+          <a class="primary-btn" style="display:block;text-decoration:none;text-align:center;" id="about-whatsapp-link" target="_blank" rel="noopener">Escribir por WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SHEET: CONFIRMATION ================= -->
+  <div class="sheet-overlay hidden" id="sheet-confirm">
+    <div class="sheet">
+      <div class="sheet-header" style="border-bottom:none;justify-content:flex-end;">
+        <button class="close-x" data-close="sheet-confirm" aria-label="Cerrar"></button>
+      </div>
+      <div class="confirm-wrap" style="padding-top:8px;">
+        <div class="confirm-icon" id="confirm-check-icon"></div>
+        <h2>¡Pedido enviado!</h2>
+        <p>Tu pedido <strong id="confirm-order-id"></strong> fue enviado por WhatsApp.<br>Un gestor de ventas se pondrá en contacto contigo pronto para confirmar los detalles.</p>
+        <div class="confirm-summary" id="confirm-summary"></div>
+        <a class="primary-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;" id="btn-whatsapp-link" target="_blank" rel="noopener">
+          <span id="confirm-wa-icon"></span>Abrir chat con tu gestor
+        </a>
+        <button class="secondary-btn" id="btn-continue-shopping">Seguir comprando</button>
+      </div>
+    </div>
+  </div>
+  <!-- ================= LIGHTBOX: FOTO AMPLIADA ================= -->
+  <div class="sheet-overlay hidden" id="sheet-lightbox" style="background:rgba(20,18,14,0.85);">
+    <button class="close-x" data-close="sheet-lightbox" aria-label="Cerrar" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);color:#fff;z-index:2;"></button>
+    <img id="lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;border-radius:8px;object-fit:contain;" />
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
