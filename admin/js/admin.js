@@ -12,8 +12,8 @@
 // ==========================================================================
 
 const CONFIG = {
-  SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // TODO: pega aquí tu Project URL de Supabase
-  SUPABASE_ANON_KEY: "sb_publishable_QW0Oq9uAK-UVaTJhUWRk5A_yW3-r31e", // TODO: pega aquí tu anon public key de Supabase
+  SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // conectado ✅
+  SUPABASE_ANON_KEY: "sb_publishable_QW0Oq9uAK-UVaTJhUWRk5A_yW3-r31e", // conectado ✅
 };
 
 const isLiveMode = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
@@ -58,6 +58,43 @@ let demoWholesaleApps = [
 // ==========================================================================
 // CAPA DE DATOS — abstrae demo vs Supabase real
 // ==========================================================================
+
+// Convierte una fila de Supabase (con sus joins) a la misma forma que usa
+// el resto del panel, para no tener que duplicar la lógica de renderizado.
+function normalizeProduct(row) {
+  return {
+    id: row.id,
+    name: row.nombre,
+    category: row.categorias ? row.categorias.slug : null,
+    tag: row.etiqueta || "",
+    color: row.color_hex || "#e8e3d6",
+    description: row.descripcion || "",
+    imageUrl: row.imagen_url || null,
+    active: row.activo,
+    variants: (row.variantes_producto || []).map((v) => ({
+      id: v.id,
+      label: v.etiqueta,
+      sku: v.sku || "",
+      retailPrice: Number(v.precio_detalle),
+      wholesalePrice: v.precio_mayorista != null ? Number(v.precio_mayorista) : null,
+      available: v.disponible !== false,
+    })),
+  };
+}
+
+let categoriesCache = []; // {id (slug), label, icon, dbId (uuid, solo en modo live)}
+
+async function getCategories() {
+  if (isLiveMode) {
+    const { data, error } = await supabaseClient.from("categorias").select("*").order("orden");
+    if (error) throw error;
+    categoriesCache = data.map((c) => ({ id: c.slug, label: c.nombre, icon: c.icono, dbId: c.id }));
+    return categoriesCache;
+  }
+  categoriesCache = CATEGORIES.filter((c) => c.id !== "todos");
+  return categoriesCache;
+}
+
 async function getProducts() {
   if (isLiveMode) {
     // --- Supabase real ---
@@ -66,19 +103,89 @@ async function getProducts() {
       .select("*, categorias(nombre,slug), variantes_producto(*)")
       .order("nombre");
     if (error) throw error;
-    return data;
+    return data.map(normalizeProduct);
   }
   return demoProducts;
+}
+
+// Sube una foto (dataURL) a Supabase Storage y devuelve la URL pública.
+// Si el valor ya es una URL (no una foto nueva), la deja tal cual.
+async function uploadProductPhotoIfNeeded(imageUrl, productId) {
+  if (!imageUrl || !imageUrl.startsWith("data:")) return imageUrl || null;
+
+  const matches = imageUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+  if (!matches) return null;
+  const mime = matches[1];
+  const ext = mime.split("/")[1] || "jpg";
+  const binary = atob(matches[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mime });
+
+  const filePath = `${productId}-${Date.now()}.${ext}`;
+  const { error: uploadError } = await supabaseClient
+    .storage.from("productos")
+    .upload(filePath, blob, { contentType: mime, upsert: true });
+  if (uploadError) throw uploadError;
+
+  const { data } = supabaseClient.storage.from("productos").getPublicUrl(filePath);
+  return data.publicUrl;
 }
 
 async function saveProduct(product) {
   if (isLiveMode) {
     // --- Supabase real ---
-    // 1) si product.imageUrl es un data URL nuevo, subirlo primero a Supabase
-    //    Storage (bucket "productos") y reemplazarlo por la URL pública resultante
-    // 2) upsert en `productos`, 3) upsert de cada fila en `variantes_producto`
-    // (implementar según necesidades exactas del panel una vez conectado).
-    throw new Error("Conecta Supabase en Configuración para guardar productos reales.");
+    if (!categoriesCache.length) await getCategories();
+    const categoria = categoriesCache.find((c) => c.id === product.category);
+    if (!categoria) throw new Error("Categoría no encontrada. Recarga la página e intenta de nuevo.");
+
+    const isNew = !product.id || String(product.id).startsWith("p-");
+
+    // 1) producto (crear o actualizar)
+    const photoUrl = await uploadProductPhotoIfNeeded(product.imageUrl, isNew ? `nuevo-${Date.now()}` : product.id);
+
+    const productoRow = {
+      nombre: product.name,
+      categoria_id: categoria.dbId,
+      descripcion: product.description,
+      color_hex: product.color,
+      imagen_url: photoUrl,
+      etiqueta: product.tag || null,
+      activo: product.active,
+    };
+
+    let productoId = product.id;
+    if (isNew) {
+      const { data, error } = await supabaseClient.from("productos").insert(productoRow).select().single();
+      if (error) throw error;
+      productoId = data.id;
+    } else {
+      const { error } = await supabaseClient.from("productos").update(productoRow).eq("id", productoId);
+      if (error) throw error;
+    }
+
+    // 2) variantes — se reemplazan todas (simple y confiable mientras el
+    //    catálogo no tiene pedidos reales asociados; si una variante ya
+    //    tiene pedidos, Supabase rechazará su eliminación y avisará aquí).
+    if (!isNew) {
+      const { error: delError } = await supabaseClient.from("variantes_producto").delete().eq("producto_id", productoId);
+      if (delError) {
+        throw new Error("No se pudieron actualizar las variantes: " + delError.message + " (probablemente alguna ya tiene pedidos asociados).");
+      }
+    }
+
+    const variantRows = product.variants.map((v) => ({
+      producto_id: productoId,
+      etiqueta: v.label,
+      sku: v.sku || null,
+      precio_detalle: v.retailPrice,
+      precio_mayorista: v.wholesalePrice,
+      disponible: v.available !== false,
+    }));
+    const { error: varError } = await supabaseClient.from("variantes_producto").insert(variantRows);
+    if (varError) throw varError;
+
+    return;
   }
   const idx = demoProducts.findIndex((p) => p.id === product.id);
   if (idx === -1) {
@@ -201,10 +308,11 @@ function setupSidebar() {
 // ==========================================================================
 // PÁGINA: PRODUCTOS
 // ==========================================================================
-function populateCategoryFilters() {
+async function populateCategoryFilters() {
+  const categories = await getCategories();
   const filterSelect = $("#category-filter");
   const formSelect = $("#pf-category");
-  CATEGORIES.filter((c) => c.id !== "todos").forEach((c) => {
+  categories.forEach((c) => {
     filterSelect.insertAdjacentHTML("beforeend", `<option value="${c.id}">${c.label}</option>`);
     formSelect.insertAdjacentHTML("beforeend", `<option value="${c.id}">${c.label}</option>`);
   });
@@ -237,7 +345,7 @@ function renderProductsTable(allProducts) {
 
   tbody.innerHTML = filtered.map((p) => {
     const allAvailable = p.variants.every((v) => v.available !== false);
-    const catLabel = (CATEGORIES.find((c) => c.id === p.category) || {}).label || p.category;
+    const catLabel = (categoriesCache.find((c) => c.id === p.category) || {}).label || p.category;
     return `
       <tr>
         <td><span class="swatch" style="background:${p.color};${p.imageUrl ? `background-image:url('${p.imageUrl}');background-size:cover;background-position:center;` : ""}"></span></td>
@@ -266,9 +374,14 @@ function renderProductsTable(allProducts) {
       const product = filtered.find((p) => p.id === btn.dataset.toggleAvailable);
       const makeAvailable = !product.variants.every((v) => v.available !== false);
       product.variants.forEach((v) => { v.available = makeAvailable; });
-      await saveProduct(product);
-      const products = await getProducts();
-      renderProductsTable(products);
+      try {
+        await saveProduct(product);
+        const products = await getProducts();
+        renderProductsTable(products);
+      } catch (err) {
+        console.error("Error al cambiar disponibilidad:", err);
+        alert("No se pudo actualizar la disponibilidad:\n\n" + (err.message || err));
+      }
     });
   });
   tbody.querySelectorAll("[data-sell]").forEach((btn) => {
@@ -280,9 +393,14 @@ function renderProductsTable(allProducts) {
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm("¿Eliminar este producto? Esta acción no se puede deshacer.")) return;
-      await deleteProduct(btn.dataset.delete);
-      const products = await getProducts();
-      renderProductsTable(products);
+      try {
+        await deleteProduct(btn.dataset.delete);
+        const products = await getProducts();
+        renderProductsTable(products);
+      } catch (err) {
+        console.error("Error al eliminar producto:", err);
+        alert("No se pudo eliminar el producto:\n\n" + (err.message || err));
+      }
     });
   });
 }
@@ -299,7 +417,7 @@ function openProductModal(product) {
 
   $("#modal-product-title").textContent = product ? "Editar producto" : "Nuevo producto";
   $("#pf-name").value = product ? product.name : "";
-  $("#pf-category").value = product ? product.category : CATEGORIES[1].id;
+  $("#pf-category").value = product ? product.category : (categoriesCache[0] || {}).id;
   $("#pf-tag").value = product ? product.tag : "";
   $("#pf-description").value = product ? product.description : "";
   $("#pf-color").value = product ? rgbToHex(product.color) : "#e8e3d6";
@@ -415,6 +533,7 @@ function setupProductModal() {
     const name = $("#pf-name").value.trim();
     if (!name) { alert("El producto necesita un nombre."); return; }
     if (editingVariants.length === 0) { alert("Agrega al menos una variante (presentación) con su precio."); return; }
+    if (!$("#pf-category").value) { alert("Selecciona una categoría antes de guardar."); return; }
 
     const product = {
       id: editingProductId || `p-${Date.now()}`,
@@ -428,10 +547,23 @@ function setupProductModal() {
       variants: editingVariants,
     };
 
-    await saveProduct(product);
-    closeModal("modal-product");
-    const products = await getProducts();
-    renderProductsTable(products);
+    const saveBtn = $("#btn-save-product");
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = "Guardando...";
+    saveBtn.disabled = true;
+
+    try {
+      await saveProduct(product);
+      closeModal("modal-product");
+      const products = await getProducts();
+      renderProductsTable(products);
+    } catch (err) {
+      console.error("Error al guardar producto:", err);
+      alert("No se pudo guardar el producto:\n\n" + (err.message || err));
+    } finally {
+      saveBtn.textContent = originalText;
+      saveBtn.disabled = false;
+    }
   });
 }
 
@@ -761,8 +893,7 @@ function generateSalesPDF(sales, from, to) {
   doc.save(fileName);
 }
 
-function init() {
-  populateCategoryFilters();
+async function init() {
   setupLogin();
   setupSidebar();
   setupProductModal();
@@ -770,6 +901,13 @@ function init() {
   setupReportControls();
   setupModalClosers();
   setupConfigPage();
+
+  try {
+    await populateCategoryFilters();
+  } catch (err) {
+    console.error("Error al cargar categorías:", err);
+    alert("No se pudieron cargar las categorías desde Supabase:\n\n" + (err.message || err) + "\n\nRecarga la página para intentar de nuevo.");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
