@@ -7,8 +7,8 @@ const CONFIG = {
   ADMIN_WHATSAPP_NUMBER: "50300000000", // TODO: número donde TÚ recibes avisos de nuevas cuentas mayoristas
   STORE_ADDRESS: "4ta calle oriente, casa #2-7, Lourdes Colón, La Libertad. Referencia: a la par / dentro de Médico Lourdes.",
   SHIPPING_INFO: "Consulta la tarifa de tu zona con tu gestor de ventas", // TODO: reemplazar por tabla real de zonas
-  SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // TODO: pega aquí tu Project URL de Supabase (igual que en admin/js/admin.js)
-  SUPABASE_ANON_KEY: "sb_publishable_QW0Oq9uAK-UVaTJhUWRk5A_yW3-r31e", // TODO: pega aquí tu anon public key de Supabase
+  SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // conectado ✅
+  SUPABASE_ANON_KEY: "sb_publishable_QW0Oq9uAK-UVaTJhUWRk5A_yW3-r31e", // conectado ✅
 };
 
 const isLiveMode = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
@@ -17,7 +17,56 @@ if (isLiveMode && window.supabase) {
   supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 }
 
-// ---------- Estado en memoria (no persiste al recargar; ver nota al final) ----------
+// ==========================================================================
+// CATÁLOGO EN VIVO — reemplaza CATEGORIES/PRODUCTS (de data.js) con lo que
+// haya guardado en Supabase, cuando está conectado. Mientras no haya
+// productos reales cargados desde el panel admin, el catálogo se ve vacío
+// aquí (data.js solo se usa como demo cuando Supabase no está conectado).
+// ==========================================================================
+async function loadLiveCatalog() {
+  if (!isLiveMode) return; // sigue usando el catálogo de ejemplo de data.js
+
+  const [catRes, prodRes] = await Promise.all([
+    supabaseClient.from("categorias").select("*").order("orden"),
+    supabaseClient
+      .from("productos")
+      .select("*, categorias(slug), variantes_producto(*)")
+      .eq("activo", true)
+      .order("nombre"),
+  ]);
+
+  if (!catRes.error && catRes.data) {
+    CATEGORIES.length = 0;
+    CATEGORIES.push({ id: "todos", label: "Todos", icon: "sparkles" });
+    catRes.data.forEach((c) => CATEGORIES.push({ id: c.slug, label: c.nombre, icon: c.icono || "sparkles" }));
+  }
+
+  if (!prodRes.error && prodRes.data) {
+    const liveProducts = prodRes.data
+      .map((row) => ({
+        id: row.id,
+        name: row.nombre,
+        category: row.categorias ? row.categorias.slug : null,
+        tag: row.etiqueta || "",
+        color: row.color_hex || "#e8e3d6",
+        description: row.descripcion || "",
+        imageUrl: row.imagen_url || null,
+        variants: (row.variantes_producto || [])
+          .filter((v) => v.disponible !== false)
+          .map((v) => ({
+            label: v.etiqueta,
+            price: Number(v.precio_detalle),
+            wholesalePrice: v.precio_mayorista != null ? Number(v.precio_mayorista) : Number(v.precio_detalle),
+          })),
+      }))
+      .filter((p) => p.variants.length > 0); // oculta productos sin ninguna variante disponible
+
+    PRODUCTS.length = 0;
+    liveProducts.forEach((p) => PRODUCTS.push(p));
+  }
+}
+
+
 const state = {
   category: "todos",
   search: "",
@@ -783,15 +832,25 @@ function injectStaticIcons() {
 // ==========================================================================
 // INIT
 // ==========================================================================
-function init() {
+async function init() {
   injectStaticIcons();
-  renderCategories();
-  renderGrid();
-  renderCartBar();
   setupNav();
   setupSheetClosers();
   setupAuthSheet();
   setupAbout();
+
+  if (isLiveMode) {
+    $("#product-grid").innerHTML = `<div class="empty-state">${ICON("leaf", 26)}<p>Cargando catálogo...</p></div>`;
+    try {
+      await loadLiveCatalog();
+    } catch (e) {
+      console.error("No se pudo cargar el catálogo desde Supabase:", e);
+    }
+  }
+
+  renderCategories();
+  renderGrid();
+  renderCartBar();
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {
