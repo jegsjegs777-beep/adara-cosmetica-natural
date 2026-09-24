@@ -374,9 +374,14 @@ function renderProductsTable(allProducts) {
       const product = filtered.find((p) => p.id === btn.dataset.toggleAvailable);
       const makeAvailable = !product.variants.every((v) => v.available !== false);
       product.variants.forEach((v) => { v.available = makeAvailable; });
-      await saveProduct(product);
-      const products = await getProducts();
-      renderProductsTable(products);
+      try {
+        await saveProduct(product);
+        const products = await getProducts();
+        renderProductsTable(products);
+      } catch (err) {
+        console.error("Error al cambiar disponibilidad:", err);
+        alert("No se pudo actualizar la disponibilidad:\n\n" + (err.message || err));
+      }
     });
   });
   tbody.querySelectorAll("[data-sell]").forEach((btn) => {
@@ -388,9 +393,14 @@ function renderProductsTable(allProducts) {
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm("¿Eliminar este producto? Esta acción no se puede deshacer.")) return;
-      await deleteProduct(btn.dataset.delete);
-      const products = await getProducts();
-      renderProductsTable(products);
+      try {
+        await deleteProduct(btn.dataset.delete);
+        const products = await getProducts();
+        renderProductsTable(products);
+      } catch (err) {
+        console.error("Error al eliminar producto:", err);
+        alert("No se pudo eliminar el producto:\n\n" + (err.message || err));
+      }
     });
   });
 }
@@ -523,6 +533,7 @@ function setupProductModal() {
     const name = $("#pf-name").value.trim();
     if (!name) { alert("El producto necesita un nombre."); return; }
     if (editingVariants.length === 0) { alert("Agrega al menos una variante (presentación) con su precio."); return; }
+    if (!$("#pf-category").value) { alert("Selecciona una categoría antes de guardar."); return; }
 
     const product = {
       id: editingProductId || `p-${Date.now()}`,
@@ -536,10 +547,23 @@ function setupProductModal() {
       variants: editingVariants,
     };
 
-    await saveProduct(product);
-    closeModal("modal-product");
-    const products = await getProducts();
-    renderProductsTable(products);
+    const saveBtn = $("#btn-save-product");
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = "Guardando...";
+    saveBtn.disabled = true;
+
+    try {
+      await saveProduct(product);
+      closeModal("modal-product");
+      const products = await getProducts();
+      renderProductsTable(products);
+    } catch (err) {
+      console.error("Error al guardar producto:", err);
+      alert("No se pudo guardar el producto:\n\n" + (err.message || err));
+    } finally {
+      saveBtn.textContent = originalText;
+      saveBtn.disabled = false;
+    }
   });
 }
 
@@ -870,7 +894,6 @@ function generateSalesPDF(sales, from, to) {
 }
 
 async function init() {
-  await populateCategoryFilters();
   setupLogin();
   setupSidebar();
   setupProductModal();
@@ -878,6 +901,13 @@ async function init() {
   setupReportControls();
   setupModalClosers();
   setupConfigPage();
+
+  try {
+    await populateCategoryFilters();
+  } catch (err) {
+    console.error("Error al cargar categorías:", err);
+    alert("No se pudieron cargar las categorías desde Supabase:\n\n" + (err.message || err) + "\n\nRecarga la página para intentar de nuevo.");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
