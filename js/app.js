@@ -636,6 +636,30 @@ function notifyAdminNewWholesale({ name, phone, email }) {
   window.open(link, "_blank");
 }
 
+// Revisa el tipo de cliente (detalle/mayorista) para el usuario de la
+// sesión actual, y actualiza el estado en consecuencia. Se usa tanto al
+// iniciar sesión manualmente como al restaurar una sesión guardada.
+async function applyWholesaleStatusForUser(userId) {
+  const { data: cliente } = await supabaseClient
+    .from("clientes").select("tipo").eq("auth_user_id", userId).single();
+  if (cliente && cliente.tipo === "mayorista") {
+    state.wholesaleStatus = "approved"; state.isWholesale = true;
+  } else {
+    state.wholesaleStatus = "pending"; state.isWholesale = false;
+  }
+}
+
+// Si el navegador ya tenía una sesión guardada (inicio de sesión previo),
+// la restaura automáticamente sin pedirle al cliente que vuelva a
+// escribir su correo y contraseña.
+async function restoreSessionIfAny() {
+  if (!isLiveMode) return;
+  const { data } = await supabaseClient.auth.getSession();
+  if (data && data.session && data.session.user) {
+    await applyWholesaleStatusForUser(data.session.user.id);
+  }
+}
+
 function setupAuthSheet() {
   $("#tab-login").addEventListener("click", () => { showAuthView("login"); $("#tab-login").classList.add("active"); $("#tab-register").classList.remove("active"); });
   $("#tab-register").addEventListener("click", () => { showAuthView("register"); $("#tab-register").classList.add("active"); $("#tab-login").classList.remove("active"); });
@@ -643,6 +667,7 @@ function setupAuthSheet() {
   $("#btn-back-to-login").addEventListener("click", () => { showAuthView("login"); $("#tab-login").classList.add("active"); $("#tab-register").classList.remove("active"); });
 
   // ---------- Iniciar sesión ----------
+
   $("#btn-login").addEventListener("click", async () => {
     hideAuthError("#login-error");
     const email = $("#login-email").value.trim();
@@ -651,16 +676,9 @@ function setupAuthSheet() {
 
     if (isLiveMode) {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) { showAuthError("#login-error", "Correo o contraseña incorrectos."); return; }
+      if (error) { showAuthError("#login-error", error.message); return; }
 
-      // Consulta si el admin ya aprobó esta cuenta (clientes.tipo === 'mayorista')
-      const { data: cliente } = await supabaseClient
-        .from("clientes").select("tipo").eq("auth_user_id", data.user.id).single();
-      if (cliente && cliente.tipo === "mayorista") {
-        state.wholesaleStatus = "approved"; state.isWholesale = true;
-      } else {
-        state.wholesaleStatus = "pending"; state.isWholesale = false;
-      }
+      await applyWholesaleStatusForUser(data.user.id);
       finishLoginSuccess();
     } else {
       // Modo demostración: sin cuentas reales, simula una cuenta YA APROBADA
@@ -865,6 +883,11 @@ async function init() {
       await loadLiveCatalog();
     } catch (e) {
       console.error("No se pudo cargar el catálogo desde Supabase:", e);
+    }
+    try {
+      await restoreSessionIfAny();
+    } catch (e) {
+      console.error("No se pudo restaurar la sesión:", e);
     }
   }
 
