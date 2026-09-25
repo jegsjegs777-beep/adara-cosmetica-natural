@@ -3,8 +3,8 @@
 // ==========================================================================
 // CONFIGURACIÓN PENDIENTE — reemplazar antes de publicar:
 const CONFIG = {
-  WHATSAPP_NUMBER: "50300000000", // TODO: número real de WhatsApp Business (con código de país, sin +)
-  ADMIN_WHATSAPP_NUMBER: "50300000000", // TODO: número donde TÚ recibes avisos de nuevas cuentas mayoristas
+  WHATSAPP_NUMBER: "50360005848", // TODO: número real de WhatsApp Business (con código de país, sin +)
+  ADMIN_WHATSAPP_NUMBER: "50360005848", // TODO: número donde TÚ recibes avisos de nuevas cuentas mayoristas
   STORE_ADDRESS: "4ta calle oriente, casa #2-7, Lourdes Colón, La Libertad. Referencia: a la par / dentro de Médico Lourdes.",
   SHIPPING_INFO: "Consulta la tarifa de tu zona con tu gestor de ventas", // TODO: reemplazar por tabla real de zonas
   SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // conectado ✅
