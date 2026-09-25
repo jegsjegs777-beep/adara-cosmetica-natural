@@ -3,8 +3,8 @@
 // ==========================================================================
 // CONFIGURACIÓN PENDIENTE — reemplazar antes de publicar:
 const CONFIG = {
-  WHATSAPP_NUMBER: "50360005848", // TODO: número real de WhatsApp Business (con código de país, sin +)
-  ADMIN_WHATSAPP_NUMBER: "50360005848", // TODO: número donde TÚ recibes avisos de nuevas cuentas mayoristas
+  WHATSAPP_NUMBER: "50360005848", // conectado ✅
+  ADMIN_WHATSAPP_NUMBER: "50360005848", // conectado ✅
   STORE_ADDRESS: "4ta calle oriente, casa #2-7, Lourdes Colón, La Libertad. Referencia: a la par / dentro de Médico Lourdes.",
   SHIPPING_INFO: "Consulta la tarifa de tu zona con tu gestor de ventas", // TODO: reemplazar por tabla real de zonas
   SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // conectado ✅
@@ -685,19 +685,32 @@ function setupAuthSheet() {
     if (isLiveMode) {
       const { data, error } = await supabaseClient.auth.signUp({ email, password });
       if (error) { showAuthError("#register-error", error.message); return; }
+      if (!data.user) {
+        showAuthError("#register-error", "No se pudo crear la cuenta (puede que ese correo ya esté registrado).");
+        return;
+      }
 
       // El cliente se crea como 'detalle' (precio normal) — el trigger
       // aprobar_mayorista() lo cambia a 'mayorista' cuando el admin apruebe
       // la solicitud desde el panel (ver database/schema.sql).
-      const { data: clienteRow } = await supabaseClient.from("clientes").insert({
-        auth_user_id: data.user ? data.user.id : null,
+      const { data: clienteRow, error: clienteError } = await supabaseClient.from("clientes").insert({
+        auth_user_id: data.user.id,
         nombre: name, telefono: phone, correo: email, tipo: "detalle",
       }).select().single();
 
-      if (clienteRow) {
-        await supabaseClient.from("solicitudes_mayorista").insert({
-          cliente_id: clienteRow.id, nombre_negocio: name, estado: "pendiente",
-        });
+      if (clienteError) {
+        console.error("Error al crear cliente:", clienteError);
+        showAuthError("#register-error", "Tu cuenta se creó, pero no pudimos guardar tus datos: " + clienteError.message);
+        return;
+      }
+
+      const { error: solicitudError } = await supabaseClient.from("solicitudes_mayorista").insert({
+        cliente_id: clienteRow.id, nombre_negocio: name, estado: "pendiente",
+      });
+      if (solicitudError) {
+        console.error("Error al crear solicitud mayorista:", solicitudError);
+        showAuthError("#register-error", "Tu cuenta se creó, pero no pudimos registrar la solicitud mayorista: " + solicitudError.message);
+        return;
       }
     }
 
