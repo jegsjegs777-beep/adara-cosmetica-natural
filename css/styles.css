@@ -73,6 +73,15 @@ input { font-family: inherit; }
   align-items: center;
   justify-content: space-between;
 }
+.brand-row { display: flex; align-items: center; gap: 10px; }
+.header-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+  flex-shrink: 0;
+}
 .icon-btn {
   background: rgba(255, 255, 255, 0.15);
   border: none;
