@@ -204,6 +204,18 @@ async function deleteProduct(id) {
   demoProducts = demoProducts.filter((p) => p.id !== id);
 }
 
+function normalizeWholesaleApp(row) {
+  return {
+    id: row.id,
+    businessName: row.nombre_negocio,
+    customerName: row.clientes ? row.clientes.nombre : "",
+    phone: row.clientes ? row.clientes.telefono : "",
+    email: row.clientes ? row.clientes.correo : "",
+    status: row.estado,
+    createdAt: (row.creado_en || "").slice(0, 10),
+  };
+}
+
 async function getWholesaleApps() {
   if (isLiveMode) {
     const { data, error } = await supabaseClient
@@ -211,7 +223,7 @@ async function getWholesaleApps() {
       .select("*, clientes(nombre,telefono,correo)")
       .order("creado_en", { ascending: false });
     if (error) throw error;
-    return data;
+    return data.map(normalizeWholesaleApp);
   }
   return demoWholesaleApps;
 }
@@ -733,8 +745,13 @@ function openSaleModal(product) {
 // PÁGINA: SOLICITUDES MAYORISTAS
 // ==========================================================================
 async function loadWholesalePage() {
-  const apps = await getWholesaleApps();
-  renderWholesaleTable(apps);
+  try {
+    const apps = await getWholesaleApps();
+    renderWholesaleTable(apps);
+  } catch (err) {
+    console.error("Error al cargar solicitudes mayoristas:", err);
+    alert("No se pudieron cargar las solicitudes mayoristas:\n\n" + (err.message || err));
+  }
 }
 
 function renderWholesaleTable(apps) {
