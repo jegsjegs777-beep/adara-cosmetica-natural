@@ -597,6 +597,15 @@ async function registerSale({ productName, variantLabel, variantId, quantity, un
   });
 }
 
+async function deleteSale(id) {
+  if (isLiveMode) {
+    const { error } = await supabaseClient.from("ventas_manuales").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  demoSales = demoSales.filter((s) => s.id !== id);
+}
+
 // ==========================================================================
 // PÁGINA: VENTAS
 // ==========================================================================
@@ -639,7 +648,7 @@ function renderSalesPage(sales) {
 
   const tbody = $("#sales-table-body");
   if (sales.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">Aún no has registrado ninguna venta.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Aún no has registrado ninguna venta.</td></tr>`;
     return;
   }
   tbody.innerHTML = sales.slice(0, 30).map((s) => {
@@ -655,9 +664,24 @@ function renderSalesPage(sales) {
         <td>${variantLabel}</td>
         <td>${qty}</td>
         <td>${money(qty * price)}</td>
+        <td><button class="icon-only-btn" data-delete-sale="${s.id}" title="Eliminar venta">🗑</button></td>
       </tr>
     `;
   }).join("");
+
+  tbody.querySelectorAll("[data-delete-sale]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Eliminar este registro de venta? Esta acción no se puede deshacer.")) return;
+      try {
+        await deleteSale(btn.dataset.deleteSale);
+        const sales = await getSales();
+        renderSalesPage(sales);
+      } catch (err) {
+        console.error("Error al eliminar venta:", err);
+        alert("No se pudo eliminar la venta:\n\n" + (err.message || err));
+      }
+    });
+  });
 }
 
 let pendingSale = null;
