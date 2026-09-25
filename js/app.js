@@ -690,13 +690,13 @@ function setupAuthSheet() {
         return;
       }
 
-      // El cliente se crea como 'detalle' (precio normal) — el trigger
-      // aprobar_mayorista() lo cambia a 'mayorista' cuando el admin apruebe
-      // la solicitud desde el panel (ver database/schema.sql).
-      const { data: clienteRow, error: clienteError } = await supabaseClient.from("clientes").insert({
+      // upsert en vez de insert: si esta persona ya había intentado
+      // registrarse antes con el mismo correo, actualiza sus datos en vez
+      // de fallar por duplicado.
+      const { data: clienteRow, error: clienteError } = await supabaseClient.from("clientes").upsert({
         auth_user_id: data.user.id,
         nombre: name, telefono: phone, correo: email, tipo: "detalle",
-      }).select().single();
+      }, { onConflict: "auth_user_id" }).select().single();
 
       if (clienteError) {
         console.error("Error al crear cliente:", clienteError);
@@ -704,13 +704,20 @@ function setupAuthSheet() {
         return;
       }
 
-      const { error: solicitudError } = await supabaseClient.from("solicitudes_mayorista").insert({
-        cliente_id: clienteRow.id, nombre_negocio: name, estado: "pendiente",
-      });
-      if (solicitudError) {
-        console.error("Error al crear solicitud mayorista:", solicitudError);
-        showAuthError("#register-error", "Tu cuenta se creó, pero no pudimos registrar la solicitud mayorista: " + solicitudError.message);
-        return;
+      // Solo crea la solicitud mayorista si esta persona no tenía una ya
+      // (evita duplicados si intenta registrarse varias veces).
+      const { data: existingSolicitud } = await supabaseClient
+        .from("solicitudes_mayorista").select("id").eq("cliente_id", clienteRow.id).maybeSingle();
+
+      if (!existingSolicitud) {
+        const { error: solicitudError } = await supabaseClient.from("solicitudes_mayorista").insert({
+          cliente_id: clienteRow.id, nombre_negocio: name, estado: "pendiente",
+        });
+        if (solicitudError) {
+          console.error("Error al crear solicitud mayorista:", solicitudError);
+          showAuthError("#register-error", "Tu cuenta se creó, pero no pudimos registrar la solicitud mayorista: " + solicitudError.message);
+          return;
+        }
       }
     }
 
