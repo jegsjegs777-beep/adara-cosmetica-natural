@@ -551,7 +551,7 @@ function handleSendOrder() {
   const orderId = "A-" + Math.floor(1000 + Math.random() * 9000);
   const isWholesale = state.isWholesale;
 
-  const itemsText = lines.map((l) => `• ${l.qty}x ${l.product.name} (${l.variant.label}) — ${money(l.lineTotal)}`).join("%0A");
+  const itemsText = lines.map((l) => `• ${l.qty}x ${l.product.name} (${l.variant.label}) — ${money(l.lineTotal)}`).join("\n");
 
   const deliveryText = state.deliveryMethod === "domicilio" ? "Envío a domicilio" : "Retiro en tienda";
   let paymentText;
@@ -569,16 +569,16 @@ function handleSendOrder() {
   }
 
   const message =
-    `*Nuevo pedido ADARA — ${orderId}*%0A` +
-    `Tipo de cliente: ${isWholesale ? "Mayorista" : "Consumidor final"}%0A%0A` +
-    `*Productos:*%0A${itemsText}%0A%0A` +
-    `*Cliente:* ${name}%0A` +
-    `*Teléfono:* ${phone}%0A` +
-    `*Entrega:* ${deliveryText} — ${location}%0A` +
-    `*Pago:* ${paymentText}%0A` +
+    `*Nuevo pedido ADARA — ${orderId}*\n` +
+    `Tipo de cliente: ${isWholesale ? "Mayorista" : "Consumidor final"}\n\n` +
+    `*Productos:*\n${itemsText}\n\n` +
+    `*Cliente:* ${name}\n` +
+    `*Teléfono:* ${phone}\n` +
+    `*Entrega:* ${deliveryText} — ${location}\n` +
+    `*Pago:* ${paymentText}\n` +
     `*Subtotal:* $${subtotal.toFixed(2)}`;
 
-  const waLink = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${message}`;
+  const waLink = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 
   $("#confirm-order-id").textContent = `#${orderId}`;
   $("#confirm-summary").innerHTML = `
@@ -627,12 +627,12 @@ function hideAuthError(elId) { $(elId).classList.add("hidden"); }
 // (no requiere backend — funciona ya mismo, esté o no Supabase conectado).
 function notifyAdminNewWholesale({ name, phone, email }) {
   const message =
-    `*Nueva cuenta mayorista registrada*%0A` +
-    `Nombre/negocio: ${name}%0A` +
-    `Teléfono: ${phone}%0A` +
-    `Correo: ${email}%0A%0A` +
+    `*Nueva cuenta mayorista registrada*\n` +
+    `Nombre/negocio: ${name}\n` +
+    `Teléfono: ${phone}\n` +
+    `Correo: ${email}\n\n` +
     `Se registró y ya puede navegar el catálogo — pero aún NO ve precio mayorista. Apruébala desde el panel admin cuando puedas.`;
-  const link = `https://wa.me/${CONFIG.ADMIN_WHATSAPP_NUMBER}?text=${message}`;
+  const link = `https://wa.me/${CONFIG.ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
   window.open(link, "_blank");
 }
 
