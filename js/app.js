@@ -3,8 +3,8 @@
 // ==========================================================================
 // CONFIGURACIÓN PENDIENTE — reemplazar antes de publicar:
 const CONFIG = {
-  WHATSAPP_NUMBER: "50360005848", // conectado ✅
-  ADMIN_WHATSAPP_NUMBER: "50360005848", // conectado ✅
+  WHATSAPP_NUMBER: "50360005048", // conectado ✅
+  ADMIN_WHATSAPP_NUMBER: "50360005048", // conectado ✅
   STORE_ADDRESS: "4ta calle oriente, casa #2-7, Lourdes Colón, La Libertad. Referencia: a la par / dentro de Médico Lourdes.",
   SHIPPING_INFO: "Consulta la tarifa de tu zona con tu gestor de ventas", // TODO: reemplazar por tabla real de zonas
   SUPABASE_URL: "https://blkssnpdiyjsashxomiu.supabase.co", // conectado ✅
